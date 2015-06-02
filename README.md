@@ -14,7 +14,7 @@
 
 ## Request Syntax
 
-htflood's syntax is heavily inspired from [httpie](http://httpie.org).
+htflood's syntax is heavily inspired from [httpie](http://httpie.org), with some additions to specify count, concurrency and distribution parameters.
 
 `
 htflood -count 128 -concurrency 32 http://google.com
