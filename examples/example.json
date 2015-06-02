@@ -1,0 +1,34 @@
+{
+  "init" :
+  {
+    "baseUrl" : "https://mydomain.com",
+    "username" : "user123",
+    "password" : "passwd123"
+  },
+  "requests" :
+  [
+    {
+      "url" : "{{ .baseUrl }}/users/login",
+      "method" : "POST",
+      "body" : {
+        "username" : "{{ .username }}",
+        "password" : "{{ .password }}",
+      }
+      "captures" : [{
+        "source" : "headers",
+        "name" : "token",
+        "expression" : "authToken"
+      }]
+    },
+    {
+      "url" : "{{ .baseUrl }}/controllers-proxy/{{ .idx |  printf `%040d` }}/obix/",
+      "method" : "POST",
+      "headers" : {
+        "Authorization" : "token={{ .token }}"
+      },
+      "count" : 32,
+      "concurrency" : 8
+    }
+  ]
+
+}

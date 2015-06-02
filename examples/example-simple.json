@@ -1,0 +1,12 @@
+{
+  "requests" :
+  [
+    {
+      "url" : "http://www.yahoo.com/",
+      "method" : "GET",
+      "count" : 32,
+      "concurrency" : 8
+    }
+  ]
+
+}
