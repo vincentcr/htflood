@@ -1,5 +1,5 @@
 
-``
+```
  .-. .-. _______ ,---.,-.    .---.   .---.  ,'|"\
  | | | ||__   __|| .-'| |   / .-. ) / .-. ) | |\ \
  | `-' |  )| |   | `-.| |   | | |(_)| | |(_)| | \ \
@@ -8,13 +8,13 @@
  /(  (_)   `-'   )\|  |( __.')---'   )---' (__)`--'
 (__)            (__)  (_)   (_)     (_)
 
-``
+```
 
 # HTFLOOD: Distributed HTTP Load testing tool
 
 ## Request Syntax
 
-htflood's syntax is heavily inspired from [[httpie]].
+htflood's syntax is heavily inspired from [httpie](http://httpie.org).
 
 `
 htflood -count 128 -concurrency 32 http://google.com
