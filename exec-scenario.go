@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/imdario/mergo"
 	"github.com/kr/pretty"
+	"github.com/vincentcr/mergo"
 	"io"
 	"log"
 	"text/template"
@@ -74,7 +74,6 @@ type ExecChans struct {
 }
 
 func ExecScenarioToFile(scenario RequestScenario, writer io.Writer) error {
-
 	log.Printf("Executing scenario: %# v\n", pretty.Formatter(scenario))
 
 	chans := ExecChans{
@@ -124,7 +123,7 @@ func execScenarioLocally(scenario RequestScenario, chans ExecChans) {
 
 	go func() {
 		for _, tmpl := range scenario.Requests {
-			if err := execRequestPlan(tmpl, vars, chans.Out); err != nil {
+			if err := execRequestPlan(tmpl, &vars, chans.Out); err != nil {
 				chans.Errs <- err
 			}
 		}
@@ -134,19 +133,19 @@ func execScenarioLocally(scenario RequestScenario, chans ExecChans) {
 
 }
 
-func execRequestPlan(tmpl RequestTemplate, vars Variables, out chan ResponseInfo) error {
+func execRequestPlan(tmpl RequestTemplate, vars *Variables, out chan ResponseInfo) error {
 	if err := mergeTemplateWithDefaults(&tmpl); err != nil {
 		return err
 	}
 
-	requests, err := generateRequestBatches(tmpl, vars)
+	requests, err := generateRequestBatches(tmpl, *vars)
 	if err != nil {
 		return err
 	}
 
 	for res := range ExecRequests(requests) {
 		out <- res
-		vars = mergeVariables(vars, res.Variables)
+		*vars = mergeVariables(*vars, res.Variables)
 	}
 
 	return nil

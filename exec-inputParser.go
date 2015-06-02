@@ -27,7 +27,7 @@ var urlRegex *regexp.Regexp
 var argRegexes map[ArgType]*regexp.Regexp
 
 func init() {
-	methodRegex = regexp.MustCompile("^([A-Z+])$")
+	methodRegex = regexp.MustCompile("^[A-Z]+$")
 	urlRegex = regexp.MustCompile("^https?://+")
 	argRegexes = map[ArgType]*regexp.Regexp{
 		ArgTypeHeader: regexp.MustCompile("^(\\w+)?:([^=].*)"),
@@ -52,6 +52,7 @@ func ParseScenarioFromInput(args []string) (RequestScenario, error) {
 	}
 
 	if len(bytes) > 0 {
+		scenario = &RequestScenario{}
 		err = ParseScenarioFromJson(bytes, scenario)
 		if err != nil {
 			return RequestScenario{}, err
@@ -79,7 +80,10 @@ func readStdin() ([]byte, error) {
 
 func ParseScenarioFromJson(bytes []byte, scenario *RequestScenario) error {
 	err := json.Unmarshal(bytes, scenario)
-	return err
+	if err != nil {
+		return fmt.Errorf("Failed to parse data to scenario: %v", err)
+	}
+	return nil
 }
 
 func parseScenarioFromCommandLine(args []string, scenario **RequestScenario) error {
