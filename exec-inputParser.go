@@ -60,8 +60,11 @@ func ParseScenarioFromInput(args []string) (RequestScenario, error) {
 	}
 
 	err = parseScenarioFromCommandLine(args, &scenario)
+	if err != nil {
+		return RequestScenario{}, err
+	}
 
-	return *scenario, err
+	return *scenario, nil
 }
 
 func readStdin() ([]byte, error) {
