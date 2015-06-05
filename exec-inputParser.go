@@ -118,12 +118,16 @@ func parseScenarioFromCommandLine(args []string, scenario **RequestScenario) err
 		}
 
 		err = parseRemainingArgs(cmd.Args(), &req)
+		if err != nil {
+			return err
+		}
 
 		*scenario = &RequestScenario{
 			Init:     Variables{},
 			Bots:     bots,
 			Requests: []RequestTemplate{req},
 		}
+
 	} else if len(bots) > 0 {
 		(*scenario).Bots = bots
 	}

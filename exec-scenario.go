@@ -168,7 +168,8 @@ func generateRequestBatches(tmpl RequestTemplate, vars Variables) ([][]RequestIn
 }
 
 func generateRequests(tmpl RequestTemplate, vars Variables) ([]RequestInfo, error) {
-	reqs := make([]RequestInfo, 0, tmpl.Count)
+	totalCount := tmpl.Count * tmpl.Concurrency
+	reqs := make([]RequestInfo, 0, totalCount)
 
 	tmplJsonBytes, err := json.Marshal(tmpl)
 	if err != nil {
@@ -176,7 +177,7 @@ func generateRequests(tmpl RequestTemplate, vars Variables) ([]RequestInfo, erro
 	}
 	tmplJson := string(tmplJsonBytes)
 
-	for i := 0; i < tmpl.Count; i++ {
+	for i := 0; i < totalCount; i++ {
 		idx := tmpl.StartIdx + i
 		vars["idx"] = idx
 		req, err := renderTemplate(tmplJson, vars)
@@ -233,6 +234,14 @@ func batchify(reqs []RequestInfo, batchSize int) [][]RequestInfo {
 
 func min(x, y int) int {
 	if x < y {
+		return x
+	} else {
+		return y
+	}
+}
+
+func max(x, y int) int {
+	if x > y {
 		return x
 	} else {
 		return y

@@ -44,12 +44,10 @@ func execScenarioFromBot(botIdx int, scenario RequestScenario, chans ExecChans) 
 }
 
 func makeBotScenario(botIdx int, scenario RequestScenario) RequestScenario {
-	numBots := len(scenario.Bots)
-	scenario.Bots = nil //dont send bot array or we will have infinite recursion
+	scenario.Bots = nil //dont send bot list to bots or we will have infinite recursion
 
 	botReqs := make([]RequestTemplate, len(scenario.Requests))
 	for i, req := range scenario.Requests {
-		req.Count /= numBots
 		req.StartIdx = botIdx * req.Count
 
 		botReqs[i] = req
