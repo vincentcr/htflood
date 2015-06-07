@@ -1,4 +1,4 @@
-package main
+package req
 
 import (
 	"bufio"
@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var arrayIndexRe *regexp.Regexp
@@ -19,19 +20,28 @@ func init() {
 	arrayIndexRe = regexp.MustCompile("\\[(\\d+)\\]")
 }
 
-func ParseResponse(res *http.Response, captures []ResponseCapture) (int, Variables, error) {
+type responseBodyInfo struct {
+	Elapsed   time.Duration
+	Length    int64
+	Variables Variables
+}
+
+func parseResponseBody(res *http.Response, captures []ResponseCapture) (responseBodyInfo, error) {
+	started := time.Now()
+
 	vars := Variables{}
 	saveBody := shouldSaveBody(captures)
 	length, body, err := readContent(res, saveBody)
 	if err != nil {
-		return 0, vars, err
+		return responseBodyInfo{}, err
 	}
+	elapsed := time.Now().Sub(started)
 
 	var parsedBody interface{} = nil
 	if saveBody {
 		err := parseBody(res, body, &parsedBody)
 		if err != nil {
-			return 0, vars, err
+			return responseBodyInfo{}, err
 		}
 	}
 
@@ -43,14 +53,14 @@ func ParseResponse(res *http.Response, captures []ResponseCapture) (int, Variabl
 		} else if capture.Source == ResponseCaptureBody {
 			val, err := traverseObject(parsedBody, capture.Expression)
 			if err != nil {
-				return 0, vars, err
+				return responseBodyInfo{}, err
 			} else {
 				vars[name] = fmt.Sprintf("%v", val)
 			}
 		}
 	}
 
-	return length, vars, nil
+	return responseBodyInfo{Elapsed: elapsed, Length: length, Variables: vars}, nil
 }
 
 func shouldSaveBody(captures []ResponseCapture) bool {
@@ -62,19 +72,17 @@ func shouldSaveBody(captures []ResponseCapture) bool {
 	return false
 }
 
-func readContent(res *http.Response, saveBody bool) (int, []byte, error) {
+func readContent(res *http.Response, saveBody bool) (int64, []byte, error) {
 	reader := bufio.NewReader(res.Body)
 	var body []byte
-	var length int
+	var length int64
 	var err error
 
 	if saveBody {
 		body, err = ioutil.ReadAll(reader)
-		length = len(body)
+		length = int64(len(body))
 	} else {
-		var len64 int64
-		len64, err = io.Copy(ioutil.Discard, reader)
-		length = int(len64)
+		length, err = io.Copy(ioutil.Discard, reader)
 	}
 
 	return length, body, err

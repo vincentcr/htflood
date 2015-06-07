@@ -1,4 +1,4 @@
-package main
+package req
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const MaxRetries = 3
+const maxRetries = 3
 
 type AuthScheme string
 
@@ -17,31 +17,50 @@ const (
 	AuthSchemeBasic AuthScheme = "Basic"
 )
 
-type Headers map[string]string
-
 type RequestInfo struct {
-	Idx        int `json:"idx"`
+	Idx        uint `json:"idx"`
 	Url        string
 	Method     string
 	Auth       string
 	AuthScheme AuthScheme
-	Headers    Headers
+	Headers    map[string]string
 	Body       string
 	Captures   []ResponseCapture
 }
 
-type ResponseInfo struct {
-	Idx        int       `json:"idx"`
-	Url        string    `json:"url"`
-	Timestamp  int64     `json:"timestamp"`
-	Elapsed    float64   `json:"elapsed"`
-	Length     int       `json:"length"`
-	StatusCode int       `json:"statusCode"`
-	Meta       Variables `json:"meta,omitempty"`
-	Variables  Variables `json:"-"`
+func execScenarioLocally(scenario RequestScenario, chans execChans) {
+	vars := scenario.Init
+	if vars == nil {
+		vars = Variables{}
+	}
+
+	go func() {
+		for _, tmpl := range scenario.Requests {
+			if err := execRequestPlan(tmpl, &vars, chans.Out); err != nil {
+				chans.Errs <- err
+			}
+		}
+
+		chans.Done <- true
+	}()
+
 }
 
-func ExecRequests(batches [][]RequestInfo) chan ResponseInfo {
+func execRequestPlan(tmpl RequestTemplate, vars *Variables, out chan ResponseInfo) error {
+	requests, err := generateRequestBatches(tmpl, *vars)
+	if err != nil {
+		return err
+	}
+
+	for res := range execRequests(requests) {
+		out <- res
+		*vars = mergeVariables(*vars, res.Variables)
+	}
+
+	return nil
+}
+
+func execRequests(batches [][]RequestInfo) chan ResponseInfo {
 	outCh := make(chan ResponseInfo)
 	go func() {
 		for _, batch := range batches {
@@ -61,13 +80,17 @@ func execParallelRequests(reqs []RequestInfo) chan ResponseInfo {
 
 	for _, req := range reqs {
 		go func(req RequestInfo) {
-			res := tryExecRequest(req, MaxRetries)
+			res, err := execRequest(req)
+			if err != nil {
+				log.Printf("*** ERROR *** Unable to execute request: %v\n", err)
+			}
 			in <- res
 		}(req)
 	}
 
 	go func() {
 		defer close(out)
+
 		for range reqs {
 			res := <-in
 			out <- res
@@ -77,36 +100,13 @@ func execParallelRequests(reqs []RequestInfo) chan ResponseInfo {
 	return out
 }
 
-func tryExecRequest(req RequestInfo, maxRetries int) ResponseInfo {
-	var resInfo ResponseInfo
-	var err error
-
-	tryIdx := 1
-	stop := false
-	for !stop {
-		resInfo, err = execRequest(req)
-		if err == nil {
-			stop = true
-		} else {
-			stop = tryIdx >= maxRetries
-			tryIdx++
-		}
-	}
-
-	if err != nil {
-		log.Printf("*** ERROR *** Unable to execute request: %v\n", err)
-	}
-
-	return resInfo
-}
-
 func execRequest(reqInfo RequestInfo) (ResponseInfo, error) {
 	started := time.Now()
 
 	reqBody := bytes.NewBufferString(reqInfo.Body)
 	req, err := http.NewRequest(reqInfo.Method, reqInfo.Url, reqBody)
 	if err != nil {
-		return badResponse(reqInfo, fmt.Errorf("Error creating request %v: %v", reqInfo, err))
+		return badResponse(reqInfo, fmt.Errorf("Error creating request %#v: %v", reqInfo, err))
 	}
 
 	for name, val := range reqInfo.Headers {
@@ -116,32 +116,32 @@ func execRequest(reqInfo RequestInfo) (ResponseInfo, error) {
 	if reqInfo.Auth != "" {
 		err = addAuthHeaders(req, reqInfo)
 		if err != nil {
-			return badResponse(reqInfo, fmt.Errorf("Error creating request %v: %v", reqInfo, err))
+			return badResponse(reqInfo, fmt.Errorf("Error creating request %#v: %v", reqInfo, err))
 		}
 	}
 
 	resp, err := transport.RoundTrip(req)
 	if err != nil {
-		return badResponse(reqInfo, fmt.Errorf("Error executing request %v: %v", reqInfo, err))
+		return badResponse(reqInfo, fmt.Errorf("Error executing request %#v: %v", reqInfo, err))
 	}
 	defer resp.Body.Close()
 
-	bodyLength, vars, err := ParseResponse(resp, reqInfo.Captures)
+	connElapsed := time.Now().Sub(started)
+	bodyInfo, err := parseResponseBody(resp, reqInfo.Captures)
 	if err != nil {
-		return badResponse(reqInfo, fmt.Errorf("Error reading response %v of request %v: %v", resp, reqInfo, err))
+		return badResponse(reqInfo, fmt.Errorf("Error reading response %#v of request %#v: %v", resp, reqInfo, err))
 	}
 
-	elapsed := time.Now().Sub(started)
+	elapsed := connElapsed + bodyInfo.Elapsed
 
 	resInfo := ResponseInfo{
 		Idx:        reqInfo.Idx,
 		Url:        reqInfo.Url,
 		Timestamp:  started.Unix(),
 		Elapsed:    elapsed.Seconds() * 1000,
-		Length:     bodyLength,
-		Variables:  vars,
+		Length:     bodyInfo.Length,
 		StatusCode: resp.StatusCode,
-		Meta:       Variables{},
+		Variables:  bodyInfo.Variables,
 	}
 
 	return resInfo, nil
@@ -151,7 +151,7 @@ func badResponse(reqInfo RequestInfo, err error) (ResponseInfo, error) {
 	resInfo := ResponseInfo{
 		Url:       reqInfo.Url,
 		Timestamp: time.Now().Unix(),
-		Meta:      Variables{"error": err.Error()},
+		Error:     err.Error(),
 	}
 
 	return resInfo, err

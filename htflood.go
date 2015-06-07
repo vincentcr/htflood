@@ -1,19 +1,12 @@
 package main
 
 import (
-	"log"
-	"os"
+	"github.com/vincentcr/htflood/commands"
 	"runtime"
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	command, args := parseMainCommand()
-
-	err := command.Run(args)
-	if err != nil {
-		log.Fatalf("%v\n", err)
-		os.Exit(1)
-	}
+	numCPU := runtime.NumCPU()
+	runtime.GOMAXPROCS(numCPU)
+	commands.Execute()
 }

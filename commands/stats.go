@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"bufio"
@@ -7,14 +7,22 @@ import (
 	"math"
 	"os"
 	"sort"
+
+	"github.com/spf13/cobra"
+	"github.com/vincentcr/htflood/req"
 )
 
-type StatsCommand struct{}
+var statsCommand = &cobra.Command{
+	Use:   "stats",
+	Short: "output stats from the output of req",
+	Long:  `stats reads from stdin for output produced by the req command, and outputs statistics`,
+	Run:   checkedRun(runStats),
+}
 
-func (cmd StatsCommand) Run(args []string) error {
+func runStats(cmd *cobra.Command, args []string) error {
 
 	acc := Accumulator{}
-	acc.Responses = make([]ResponseInfo, 0)
+	acc.Responses = make([]req.ResponseInfo, 0)
 
 	for res := range readResponses() {
 		accumulate(&acc, res)
@@ -45,13 +53,13 @@ type Stats struct {
 
 type Accumulator struct {
 	Stats     Stats
-	Responses []ResponseInfo
+	Responses []req.ResponseInfo
 }
 
-type statAccessor func(res ResponseInfo) float64
+type statAccessor func(res req.ResponseInfo) float64
 
-func readResponses() chan ResponseInfo {
-	out := make(chan ResponseInfo)
+func readResponses() chan req.ResponseInfo {
+	out := make(chan req.ResponseInfo)
 
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -76,13 +84,13 @@ func readResponses() chan ResponseInfo {
 	return out
 }
 
-func parse(line string) (ResponseInfo, error) {
-	var res ResponseInfo
+func parse(line string) (req.ResponseInfo, error) {
+	var res req.ResponseInfo
 	err := json.Unmarshal([]byte(line), &res)
 	return res, err
 }
 
-func accumulate(acc *Accumulator, res ResponseInfo) {
+func accumulate(acc *Accumulator, res req.ResponseInfo) {
 	acc.Responses = append(acc.Responses, res)
 	accumulateStat(&acc.Stats.Elapsed, res.Elapsed)
 	accumulateStat(&acc.Stats.Transfer, float64(res.Length))
@@ -100,10 +108,10 @@ func finalize(acc *Accumulator) Stats {
 		fatal(fmt.Errorf("empty data"))
 	}
 
-	finalizeStat(&stats.Elapsed, acc.Responses, func(res ResponseInfo) float64 {
+	finalizeStat(&stats.Elapsed, acc.Responses, func(res req.ResponseInfo) float64 {
 		return res.Elapsed
 	})
-	finalizeStat(&stats.Transfer, acc.Responses, func(res ResponseInfo) float64 {
+	finalizeStat(&stats.Transfer, acc.Responses, func(res req.ResponseInfo) float64 {
 		return float64(res.Length)
 	})
 	stats.StatusCodes = calcStatusCodes(acc)
@@ -125,7 +133,7 @@ func calcStatusCodes(acc *Accumulator) map[string]int {
 	return statusCodes
 }
 
-func finalizeStat(stat *Stat, responses []ResponseInfo, accessor statAccessor) {
+func finalizeStat(stat *Stat, responses []req.ResponseInfo, accessor statAccessor) {
 	stat.Average = stat.Total / float64(len(responses))
 	values := sortedValues(responses, accessor)
 	for _, value := range values {
@@ -138,7 +146,7 @@ func finalizeStat(stat *Stat, responses []ResponseInfo, accessor statAccessor) {
 	stat.Q95 = round(percentile(95, values), Precision)
 }
 
-func sortedValues(responses []ResponseInfo, accessor statAccessor) []float64 {
+func sortedValues(responses []req.ResponseInfo, accessor statAccessor) []float64 {
 	values := make([]float64, 0, len(responses))
 
 	for _, res := range responses {

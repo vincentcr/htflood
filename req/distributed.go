@@ -1,5 +1,5 @@
 // Distribute scenario to bots for remote execution
-package main
+package req
 
 import (
 	"bufio"
@@ -11,16 +11,16 @@ import (
 	"sync"
 )
 
-func execScenarioFromBots(scenario RequestScenario, chans ExecChans) {
+func execScenarioDistributed(scenario RequestScenario, chans execChans) {
 	go func() {
 		var wg sync.WaitGroup
 
 		for idx, _ := range scenario.Bots {
 			wg.Add(1)
-			go func(idx int) {
+			go func(idx uint) {
 				defer wg.Done()
 				execScenarioFromBot(idx, scenario, chans)
-			}(idx)
+			}(uint(idx))
 		}
 
 		wg.Wait()
@@ -29,7 +29,7 @@ func execScenarioFromBots(scenario RequestScenario, chans ExecChans) {
 	}()
 }
 
-func execScenarioFromBot(botIdx int, scenario RequestScenario, chans ExecChans) {
+func execScenarioFromBot(botIdx uint, scenario RequestScenario, chans execChans) {
 	botScenario := makeBotScenario(botIdx, scenario)
 	data, err := encodeScenario(botScenario)
 
@@ -43,7 +43,7 @@ func execScenarioFromBot(botIdx int, scenario RequestScenario, chans ExecChans) 
 	}
 }
 
-func makeBotScenario(botIdx int, scenario RequestScenario) RequestScenario {
+func makeBotScenario(botIdx uint, scenario RequestScenario) RequestScenario {
 	scenario.Bots = nil //dont send bot list to bots or we will have infinite recursion
 
 	botReqs := make([]RequestTemplate, len(scenario.Requests))
