@@ -243,12 +243,18 @@ func parseHeadersAndBody(args []string) (map[string]string, string, error) {
 		}
 	}
 
-	bodyBytes, err := json.Marshal(bodyMap)
-	if err != nil {
-		return nil, "", err
-	}
+	var body string
+	var err error
+	if len(bodyMap) > 0 {
+		bodyBytes, err := json.Marshal(bodyMap)
+		if err != nil {
+			return nil, "", err
+		}
 
-	body := string(bodyBytes)
+		body = string(bodyBytes)
+	} else {
+		body = ""
+	}
 
 	return headers, body, err
 }
