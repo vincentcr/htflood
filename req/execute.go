@@ -15,6 +15,10 @@ type execChans struct {
 	Done chan bool
 }
 
+type scenarioExecutor interface {
+	execute(scenario RequestScenario, chans execChans)
+}
+
 func Execute(scenario RequestScenario, writer io.Writer) error {
 	log.Printf("Executing scenario: %# v\n", pretty.Formatter(scenario))
 
