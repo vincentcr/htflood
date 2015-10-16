@@ -23,7 +23,6 @@ func createTransport() *http.Transport {
 		Proxy:               http.ProxyFromEnvironment,
 		Dial:                dialer.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     tlsConfig(),
 		MaxIdleConnsPerHost: 512,
 	}
 
