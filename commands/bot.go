@@ -40,6 +40,8 @@ func init() {
 
 func runBot(cmd *cobra.Command, args []string) error {
 
+	fmt.Println("run bot", args)
+
 	if len(args) != 1 {
 		return fmt.Errorf("api key is required")
 	} else {

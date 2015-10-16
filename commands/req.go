@@ -230,7 +230,6 @@ func parseHeadersAndBody(args []string) (map[string]string, string, error) {
 
 	for _, arg := range args {
 		argType, vals := splitKeyValueArg(arg)
-		fmt.Println(arg, argType, vals)
 		switch argType {
 
 		case ArgTypeHeader:
