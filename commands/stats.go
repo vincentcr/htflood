@@ -182,11 +182,13 @@ func percentile(p float64, values []float64) float64 {
 }
 
 func print(stats Stats) {
-	bytes, err := json.Marshal(stats)
+	output := map[string]interface{}{"Stats": stats}
+	bytes, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		fatal(fmt.Errorf("Unable to format stats '%#v' to json: %v", stats, err))
 	} else {
 		os.Stdout.Write(bytes)
+		os.Stdout.Write([]byte("\n"))
 	}
 }
 
