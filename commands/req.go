@@ -59,8 +59,8 @@ func init() {
 	argPatterns.method = regexp.MustCompile("^[A-Z]+$")
 	argPatterns.url = regexp.MustCompile("^https?://+")
 	argPatterns.param = map[ArgType]*regexp.Regexp{
-		ArgTypeHeader: regexp.MustCompile("^(\\w+)?:([^=].*)"),
-		ArgTypeBody:   regexp.MustCompile("^(\\w+)?(\\:?)=(\\@?)(.+)"),
+		ArgTypeHeader: regexp.MustCompile("^([\\w\\-]+)?:([^=].*)"),
+		ArgTypeBody:   regexp.MustCompile("^([\\w\\-]+)?(\\:?)=(\\@?)(.+)"),
 	}
 }
 
