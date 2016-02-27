@@ -24,12 +24,13 @@ func createTransport() *http.Transport {
 		Dial:                dialer.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 		MaxIdleConnsPerHost: 512,
+		TLSClientConfig:     &tls.Config{},
 	}
 
 	return transport
 }
 
-func tlsConfig() *tls.Config {
+func loadSelfSignedCertificate() {
 	// server cert is self signed -> server_cert == ca_cert
 	CA_Pool := x509.NewCertPool()
 	severCert, err := ioutil.ReadFile("./tls-cert.pem")
@@ -38,8 +39,19 @@ func tlsConfig() *tls.Config {
 	}
 	CA_Pool.AppendCertsFromPEM(severCert)
 
-	// c := tls.Config{}
-	// c.InsecureSkipVerify
-
-	return &tls.Config{InsecureSkipVerify: true}
 }
+
+// func tlsConfig() *tls.Config {
+// 	// server cert is self signed -> server_cert == ca_cert
+// 	CA_Pool := x509.NewCertPool()
+// 	severCert, err := ioutil.ReadFile("./tls-cert.pem")
+// 	if err != nil {
+// 		log.Fatal("Could not load server certificate!")
+// 	}
+// 	CA_Pool.AppendCertsFromPEM(severCert)
+
+// 	// c := tls.Config{}
+// 	// c.InsecureSkipVerify
+
+// 	return &tls.Config{InsecureSkipVerify: true}
+// }

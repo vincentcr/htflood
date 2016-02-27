@@ -25,10 +25,12 @@ var reqOptions struct {
 	concurrency uint
 	auth        string
 	authScheme  string
-	debug       bool
 	botList     string
 	botFile     string
 	botApiKey   string
+	debug       bool
+	insecure    bool
+	pretty      bool
 }
 
 type ArgType int
@@ -51,10 +53,12 @@ func init() {
 	reqCommand.Flags().UintVar(&reqOptions.concurrency, "concurrency", 1, "count")
 	reqCommand.Flags().StringVar(&reqOptions.auth, "auth", "", "auth credentials (username:password)")
 	reqCommand.Flags().StringVar(&reqOptions.authScheme, "auth-scheme", string(req.AuthSchemeBasic), "the auth scheme to use (default: basic)")
-	reqCommand.Flags().BoolVar(&reqOptions.debug, "debug", false, "enables debug output")
 	reqCommand.Flags().StringVar(&reqOptions.botList, "bots", "", "bot list, comma-separated")
 	reqCommand.Flags().StringVar(&reqOptions.botFile, "bots-file", "", "bot list (json) file")
 	reqCommand.Flags().StringVar(&reqOptions.botApiKey, "bots-api-key", "", "bots api key")
+	reqCommand.Flags().BoolVar(&reqOptions.debug, "debug", false, "enables debug output")
+	reqCommand.Flags().BoolVar(&reqOptions.insecure, "insecure", false, "don't verify TLS certifcates")
+	reqCommand.Flags().BoolVar(&reqOptions.pretty, "pretty", false, "formatted output")
 
 	argPatterns.method = regexp.MustCompile("^[A-Z]+$")
 	argPatterns.url = regexp.MustCompile("^https?://+")
@@ -132,7 +136,6 @@ func parseScenarioFromCommandLine(args []string, scenario **req.RequestScenario)
 			Concurrency: reqOptions.concurrency,
 			Auth:        reqOptions.auth,
 			AuthScheme:  req.AuthScheme(reqOptions.authScheme),
-			Debug:       reqOptions.debug,
 		}
 
 		err = parseRemainingArgs(args, &tmpl)
@@ -144,6 +147,11 @@ func parseScenarioFromCommandLine(args []string, scenario **req.RequestScenario)
 			Init:     req.Variables{},
 			Bots:     bots,
 			Requests: []req.RequestTemplate{tmpl},
+			Options: req.Options{
+				Debug:    reqOptions.debug,
+				Insecure: reqOptions.insecure,
+				Pretty:   reqOptions.pretty,
+			},
 		}
 
 	} else if len(bots) > 0 {

@@ -13,7 +13,8 @@ import (
 
 func execScenarioDistributed(scenario RequestScenario, chans execChans) {
 
-	transport.TLSClientConfig = tlsConfig()
+	loadSelfSignedCertificate()
+	// transport.TLSClientConfig = tlsConfig()
 
 	go func() {
 		var wg sync.WaitGroup

@@ -13,6 +13,7 @@ type RequestScenario struct {
 	Init     Variables
 	Bots     []BotInfo
 	Requests []RequestTemplate
+	Options  Options
 }
 
 type BotInfo struct {
@@ -30,11 +31,19 @@ type RequestTemplate struct {
 	Captures    []ResponseCapture
 	Count       uint
 	Concurrency uint
-	Debug       bool
 	StartIdx    uint
 }
 
-var requestTemplateDefaults RequestTemplate
+var requestTemplateDefaults = RequestTemplate{
+	Headers: map[string]string{
+		"accept":       "application/json",
+		"content-type": "application/json",
+	},
+	Method:      "GET",
+	AuthScheme:  AuthSchemeBasic,
+	Count:       1,
+	Concurrency: 1,
+}
 
 type ResponseCaptureSource string
 
@@ -47,20 +56,6 @@ type ResponseCapture struct {
 	Source     ResponseCaptureSource
 	Name       string
 	Expression string
-}
-
-func init() {
-	requestTemplateDefaults = RequestTemplate{
-		Headers: map[string]string{
-			"accept":       "application/json",
-			"content-type": "application/json",
-		},
-		Method:      "GET",
-		AuthScheme:  AuthSchemeBasic,
-		Count:       1,
-		Concurrency: 1,
-		Debug:       false,
-	}
 }
 
 func generateRequestBatches(tmpl RequestTemplate, vars Variables) ([][]RequestInfo, error) {
