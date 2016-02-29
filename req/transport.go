@@ -38,7 +38,6 @@ func loadSelfSignedCertificate() {
 		log.Fatal("Could not load server certificate!")
 	}
 	CA_Pool.AppendCertsFromPEM(severCert)
-
 }
 
 // func tlsConfig() *tls.Config {

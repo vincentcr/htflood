@@ -100,6 +100,7 @@ func execParallelRequests(reqs []RequestInfo) chan ResponseInfo {
 	return out
 }
 
+
 func execRequest(reqInfo RequestInfo) (ResponseInfo, error) {
 	started := time.Now()
 

@@ -21,8 +21,10 @@ var reqCommand = &cobra.Command{
 }
 
 var reqOptions struct {
-	count       uint
-	concurrency uint
+	count       int
+	concurrency int
+	maxReqSec   float32
+	duration    maxReqSec
 	auth        string
 	authScheme  string
 	botList     string
@@ -49,8 +51,10 @@ var argPatterns struct {
 }
 
 func init() {
-	reqCommand.Flags().UintVar(&reqOptions.count, "count", 1, "count")
-	reqCommand.Flags().UintVar(&reqOptions.concurrency, "concurrency", 1, "count")
+	reqCommand.Flags().IntVar(&reqOptions.count, "count", 1, "count")
+	reqCommand.Flags().IntVar(&reqOptions.concurrency, "concurrency", 1, "concurrency")
+	reqCommand.Flags().Duration(&reqOptions.duration, "duration", 0, "duration (eg 300s, 1.5h, 2h45m, etc.)")
+	reqCommand.Flags().Float32Var(&reqOptions.maxReqSec, "rate", 0, "maximum request rate (req/s)")
 	reqCommand.Flags().StringVar(&reqOptions.auth, "auth", "", "auth credentials (username:password)")
 	reqCommand.Flags().StringVar(&reqOptions.authScheme, "auth-scheme", string(req.AuthSchemeBasic), "the auth scheme to use (default: basic)")
 	reqCommand.Flags().StringVar(&reqOptions.botList, "bots", "", "bot list, comma-separated")

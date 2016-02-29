@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"text/template"
+	"time"
 
 	"github.com/imdario/mergo"
 )
 
 type RequestScenario struct {
-	Init     Variables
-	Bots     []BotInfo
-	Requests []RequestTemplate
-	Options  Options
+	Init      Variables
+	Bots      []BotInfo
+	Requests  []RequestTemplate
+	Duration  time.Duration
+	MaxReqSec float32
+	Options   Options
 }
 
 type BotInfo struct {
@@ -29,9 +32,9 @@ type RequestTemplate struct {
 	Headers     map[string]string
 	Body        string
 	Captures    []ResponseCapture
-	Count       uint
-	Concurrency uint
-	StartIdx    uint
+	Count       int
+	Concurrency int
+	StartIdx    int
 }
 
 var requestTemplateDefaults = RequestTemplate{
@@ -101,6 +104,10 @@ func generateRequests(tmpl RequestTemplate, vars Variables) ([]RequestInfo, erro
 	}
 
 	return reqs, nil
+}
+
+func requestGenerator(scen RequestScenario) {
+
 }
 
 func renderTemplate(tmplText string, vars Variables) (RequestInfo, error) {
