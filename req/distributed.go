@@ -11,59 +11,85 @@ import (
 	"sync"
 )
 
-func execScenarioDistributed(scenario RequestScenario, chans execChans) {
+type distributedScenarioGenerator struct {
+	scen  RequestScenario
+	done  bool
+	outCh chan ResponseInfo
+	errCh chan error
+}
 
+func newDistributedScenarioGenerator(scen RequestScenario) (*distributedScenarioGenerator, error) {
+	g := distributedScenarioGenerator{
+		scen:  scen,
+		outCh: make(chan ResponseInfo, 16),
+		errCh: make(chan error),
+	}
+	g.start()
+	return &g, nil
+}
+
+func (g *distributedScenarioGenerator) hasNext() bool {
+	return g.done
+}
+
+func (g *distributedScenarioGenerator) next() ([]ResponseInfo, error) {
+	select {
+	case err := <-g.errCh:
+		return nil, err
+	case resp := <-g.outCh:
+		return []ResponseInfo{resp}, nil
+	}
+}
+
+func (g *distributedScenarioGenerator) start() {
 	loadSelfSignedCertificate()
-	// transport.TLSClientConfig = tlsConfig()
 
 	go func() {
 		var wg sync.WaitGroup
 
-		for idx, _ := range scenario.Bots {
+		for idx, _ := range g.scen.Bots {
 			wg.Add(1)
-			go func(idx uint) {
+			go func(idx int) {
 				defer wg.Done()
-				execScenarioFromBot(idx, scenario, chans)
-			}(uint(idx))
+				execScenarioFromBot(idx, g.scen, g.outCh, g.errCh)
+			}(int(idx))
 		}
 
 		wg.Wait()
-		chans.Done <- true
-
+		g.done = true
 	}()
 }
 
-func execScenarioFromBot(botIdx uint, scenario RequestScenario, chans execChans) {
-	botScenario := makeBotScenario(botIdx, scenario)
+func execScenarioFromBot(botIdx int, scen RequestScenario, outCh chan ResponseInfo, errCh chan error) {
+	botScenario := makeBotScenario(botIdx, scen)
 	data, err := encodeScenario(botScenario)
 
 	if err == nil {
-		bot := scenario.Bots[botIdx]
-		err = sendToBot(bot, data, chans.Out)
+		bot := scen.Bots[botIdx]
+		err = sendToBot(bot, data, outCh)
 	}
 
 	if err != nil {
-		chans.Errs <- err
+		errCh <- err
 	}
 }
 
-func makeBotScenario(botIdx uint, scenario RequestScenario) RequestScenario {
-	scenario.Bots = nil //dont send bot list to bots or we will have infinite recursion
+func makeBotScenario(botIdx int, scen RequestScenario) RequestScenario {
+	scen.Bots = nil //dont send bot list to bots or we will have infinite recursion
 
-	botReqs := make([]RequestTemplate, len(scenario.Requests))
-	for i, req := range scenario.Requests {
-		req.StartIdx = botIdx * req.Count
-
+	botReqs := make([]RequestTemplate, len(scen.Requests))
+	for i, req := range scen.Requests {
 		botReqs[i] = req
 	}
-	scenario.Requests = botReqs
-	return scenario
+	scen.WorkerIdx = botIdx
+	scen.Requests = botReqs
+	return scen
 }
 
-func encodeScenario(scenario RequestScenario) ([]byte, error) {
-	data, err := json.Marshal(scenario)
+func encodeScenario(scen RequestScenario) ([]byte, error) {
+	data, err := json.Marshal(scen)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode '%#v' to json: %v", scenario, err)
+		return nil, fmt.Errorf("failed to encode '%#v' to json: %v", scen, err)
 	}
 	return data, nil
 }

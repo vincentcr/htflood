@@ -3,7 +3,7 @@ package req
 type Variables map[string]interface{}
 
 type ResponseInfo struct {
-	Idx        uint      `json:"idx"`
+	Idx        int       `json:"idx"`
 	Url        string    `json:"url"`
 	Timestamp  int64     `json:"timestamp"`
 	Elapsed    float64   `json:"elapsed"`

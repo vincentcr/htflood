@@ -10,11 +10,12 @@ import (
 type execChans struct {
 	Out  chan ResponseInfo
 	Errs chan error
-	Done chan bool
+	Done chan struct{}
 }
 
-type scenarioExecutor interface {
-	execute(scen RequestScenario, chans execChans)
+type scenarioGenerator interface {
+	hasNext() bool
+	next() ([]ResponseInfo, error)
 }
 
 func Execute(scen RequestScenario, writer io.Writer) error {
@@ -23,42 +24,41 @@ func Execute(scen RequestScenario, writer io.Writer) error {
 
 	explainScenario(scen)
 
-	chans := execChans{
-		Out:  make(chan ResponseInfo),
-		Errs: make(chan error),
-		Done: make(chan bool),
+	gen, err := newScenarioGenerator(scen)
+	if err != nil {
+		return err
 	}
-	execScenario(scen, chans)
 
 	for {
-		select {
-		case res := <-chans.Out:
-			if err := printResponse(res, writer); err != nil {
+		if !gen.hasNext() {
+			break
+		}
+		resps, err := gen.next()
+		if err != nil {
+			return err
+		}
+
+		for _, resp := range resps {
+			if err = printResponse(resp, writer); err != nil {
 				return err
 			}
-		case err := <-chans.Errs:
-			return err
-		case <-chans.Done:
-			return nil
 		}
 	}
+
+	return nil
 }
 
-func execScenario(scen RequestScenario, chans execChans) {
+func newScenarioGenerator(scen RequestScenario) (scenarioGenerator, error) {
 	if len(scen.Bots) == 0 {
-		execScenarioLocally(scen, chans)
+		return newLocalScenarioGenerator(scen)
 	} else {
-		execScenarioDistributed(scen, chans)
+		return newDistributedScenarioGenerator(scen)
 	}
 }
 
 func explainScenario(scen RequestScenario) error {
-	var data []byte
-	var err error
+	data, err := json.MarshalIndent(scen, "", "  ")
 
-	if options.Pretty {
-		data, err = json.MarshalIndent(scen, "", "  ")
-	}
 	if err != nil {
 		return fmt.Errorf("unable to format %v to json: %v", scen, err)
 	}

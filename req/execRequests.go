@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,7 +19,7 @@ const (
 )
 
 type RequestInfo struct {
-	Idx        uint `json:"idx"`
+	Idx        int `json:"idx"`
 	Url        string
 	Method     string
 	Auth       string
@@ -28,78 +29,37 @@ type RequestInfo struct {
 	Captures   []ResponseCapture
 }
 
-func execScenarioLocally(scenario RequestScenario, chans execChans) {
-	vars := scenario.Init
-	if vars == nil {
-		vars = Variables{}
-	}
+func execRequests(reqs []RequestInfo) ([]ResponseInfo, error) {
+	var wg sync.WaitGroup
 
-	go func() {
-		for _, tmpl := range scenario.Requests {
-			if err := execRequestPlan(tmpl, &vars, chans.Out); err != nil {
-				chans.Errs <- err
-			}
-		}
+	respCh := make(chan ResponseInfo)
+	resps := make([]ResponseInfo, 0, len(reqs))
 
-		chans.Done <- true
-	}()
-
-}
-
-func execRequestPlan(tmpl RequestTemplate, vars *Variables, out chan ResponseInfo) error {
-	requests, err := generateRequestBatches(tmpl, *vars)
-	if err != nil {
-		return err
-	}
-
-	for res := range execRequests(requests) {
-		out <- res
-		*vars = mergeVariables(*vars, res.Variables)
-	}
-
-	return nil
-}
-
-func execRequests(batches [][]RequestInfo) chan ResponseInfo {
-	outCh := make(chan ResponseInfo)
-	go func() {
-		for _, batch := range batches {
-			for res := range execParallelRequests(batch) {
-				outCh <- res
-			}
-		}
-		close(outCh)
-	}()
-
-	return outCh
-}
-
-func execParallelRequests(reqs []RequestInfo) chan ResponseInfo {
-	out := make(chan ResponseInfo)
-	in := make(chan ResponseInfo)
-
+	//send requests in parallel
 	for _, req := range reqs {
+		wg.Add(1)
 		go func(req RequestInfo) {
-			res, err := execRequest(req)
+			resp, err := execRequest(req)
 			if err != nil {
 				log.Printf("*** ERROR *** Unable to execute request: %v\n", err)
 			}
-			in <- res
+			respCh <- resp
 		}(req)
 	}
 
+	//wait for responses
 	go func() {
-		defer close(out)
-
-		for range reqs {
-			res := <-in
-			out <- res
+		for i := 0; i < len(reqs); i += 1 {
+			resp := <-respCh
+			defer wg.Done()
+			resps = append(resps, resp)
 		}
 	}()
 
-	return out
-}
+	wg.Wait()
 
+	return resps, nil
+}
 
 func execRequest(reqInfo RequestInfo) (ResponseInfo, error) {
 	started := time.Now()

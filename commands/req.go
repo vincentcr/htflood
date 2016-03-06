@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/vincentcr/htflood/req"
@@ -23,8 +24,9 @@ var reqCommand = &cobra.Command{
 var reqOptions struct {
 	count       int
 	concurrency int
-	maxReqSec   float32
-	duration    maxReqSec
+	maxReqSec   float64
+	duration    time.Duration
+	randomize   bool
 	auth        string
 	authScheme  string
 	botList     string
@@ -33,6 +35,8 @@ var reqOptions struct {
 	debug       bool
 	insecure    bool
 	pretty      bool
+	//TODO: support for saving everything to file
+	// destFile    string
 }
 
 type ArgType int
@@ -53,8 +57,9 @@ var argPatterns struct {
 func init() {
 	reqCommand.Flags().IntVar(&reqOptions.count, "count", 1, "count")
 	reqCommand.Flags().IntVar(&reqOptions.concurrency, "concurrency", 1, "concurrency")
-	reqCommand.Flags().Duration(&reqOptions.duration, "duration", 0, "duration (eg 300s, 1.5h, 2h45m, etc.)")
-	reqCommand.Flags().Float32Var(&reqOptions.maxReqSec, "rate", 0, "maximum request rate (req/s)")
+	reqCommand.Flags().DurationVar(&reqOptions.duration, "duration", 0, "duration (eg 300s, 1.5h, 2h45m, etc.)")
+	reqCommand.Flags().Float64Var(&reqOptions.maxReqSec, "rate", 0, "maximum request rate (req/s)")
+	reqCommand.Flags().BoolVar(&reqOptions.randomize, "randomize", false, "whether to add a random delay before request")
 	reqCommand.Flags().StringVar(&reqOptions.auth, "auth", "", "auth credentials (username:password)")
 	reqCommand.Flags().StringVar(&reqOptions.authScheme, "auth-scheme", string(req.AuthSchemeBasic), "the auth scheme to use (default: basic)")
 	reqCommand.Flags().StringVar(&reqOptions.botList, "bots", "", "bot list, comma-separated")
@@ -140,6 +145,9 @@ func parseScenarioFromCommandLine(args []string, scenario **req.RequestScenario)
 			Concurrency: reqOptions.concurrency,
 			Auth:        reqOptions.auth,
 			AuthScheme:  req.AuthScheme(reqOptions.authScheme),
+			MaxDuration: reqOptions.duration,
+			MaxReqSec:   reqOptions.maxReqSec,
+			Randomize:   reqOptions.randomize,
 		}
 
 		err = parseRemainingArgs(args, &tmpl)

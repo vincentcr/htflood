@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	//	"log"
 	"math"
 	"os"
 	"sort"
@@ -66,6 +67,7 @@ func readResponses() chan req.ResponseInfo {
 
 		for scanner.Scan() {
 			line := scanner.Text()
+			//	log.Println(line)
 			res, err := parse(line)
 			if err != nil {
 				fatal(fmt.Errorf("Error parsing line '%v': %v", line, err))

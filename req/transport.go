@@ -39,18 +39,3 @@ func loadSelfSignedCertificate() {
 	}
 	CA_Pool.AppendCertsFromPEM(severCert)
 }
-
-// func tlsConfig() *tls.Config {
-// 	// server cert is self signed -> server_cert == ca_cert
-// 	CA_Pool := x509.NewCertPool()
-// 	severCert, err := ioutil.ReadFile("./tls-cert.pem")
-// 	if err != nil {
-// 		log.Fatal("Could not load server certificate!")
-// 	}
-// 	CA_Pool.AppendCertsFromPEM(severCert)
-
-// 	// c := tls.Config{}
-// 	// c.InsecureSkipVerify
-
-// 	return &tls.Config{InsecureSkipVerify: true}
-// }
