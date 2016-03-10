@@ -29,6 +29,72 @@ type RequestInfo struct {
 	Captures   []ResponseCapture
 }
 
+type requestExecutorPool struct {
+	respCh    chan ResponseInfo
+	reqCh     chan RequestInfo
+	errCh     chan error
+	executors []requestExecutor
+}
+
+func newRequestExecutorPool() *requestExecutorPool {
+	p := &requestExecutorPool{
+		respCh: make(chan ResponseInfo),
+		reqCh:  make(chan RequestInfo),
+		errCh:  make(chan error),
+	}
+	p.setcap(16)
+	return p
+}
+
+func (p *requestExecutorPool) setcap(n int) {
+	rem := n - len(p.executors)
+	if rem > 0 {
+		for i := 0; i < rem; i++ {
+			e := requestExecutor{pool: p}
+			e.run()
+			p.executors = append(p.executors, e)
+		}
+	}
+}
+
+func (p *requestExecutorPool) execRequests(reqs []RequestInfo) ([]ResponseInfo, error) {
+
+	for _, r := range reqs {
+		p.reqCh <- r
+	}
+
+	resps := make([]ResponseInfo, 0, len(reqs))
+
+	for range reqs {
+		select {
+		case err := <-p.errCh:
+			return nil, err
+		case resp := <-p.respCh:
+			resps = append(resps, resp)
+		}
+	}
+
+	return resps, nil
+}
+
+type requestExecutor struct {
+	pool *requestExecutorPool
+}
+
+func (e *requestExecutor) run() {
+	go func() {
+		for {
+			req := <-e.pool.reqCh
+			resp, err := execRequest(req)
+			if err != nil {
+				e.pool.errCh <- err
+			} else {
+				e.pool.respCh <- resp
+			}
+		}
+	}()
+}
+
 func execRequests(reqs []RequestInfo) ([]ResponseInfo, error) {
 	var wg sync.WaitGroup
 

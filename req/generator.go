@@ -19,6 +19,7 @@ type requestGenerator func(newVars Variables) (RequestInfo, error)
 type localScenarioGenerator struct {
 	scen        RequestScenario
 	gen         requestGenerator
+	pool        *requestExecutorPool
 	canContinue predicate
 	vars        Variables
 	prevResps   []ResponseInfo
@@ -26,7 +27,7 @@ type localScenarioGenerator struct {
 }
 
 func newLocalScenarioGenerator(scen RequestScenario) (*localScenarioGenerator, error) {
-	g := &localScenarioGenerator{scen: scen, idx: -1, vars: scen.Init}
+	g := &localScenarioGenerator{scen: scen, idx: -1, vars: scen.Init, pool: newRequestExecutorPool()}
 	g.nextTemplate()
 	return g, nil
 }
@@ -38,6 +39,8 @@ func (g *localScenarioGenerator) hasNext() bool {
 func (g *localScenarioGenerator) next() ([]ResponseInfo, error) {
 	concurrency := g.scen.Requests[g.idx].Concurrency
 	reqs := make([]RequestInfo, concurrency)
+
+	g.pool.setcap(concurrency)
 
 	//generate requests
 	for i := 0; i < concurrency; i++ {
@@ -55,7 +58,7 @@ func (g *localScenarioGenerator) next() ([]ResponseInfo, error) {
 	}
 
 	//execute requests
-	resps, err := execRequests(reqs)
+	resps, err := g.pool.execRequests(reqs)
 	if err != nil {
 		return nil, err
 	}
