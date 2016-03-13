@@ -38,8 +38,8 @@ type requestExecutorPool struct {
 
 func newRequestExecutorPool() *requestExecutorPool {
 	p := &requestExecutorPool{
-		respCh: make(chan ResponseInfo),
-		reqCh:  make(chan RequestInfo),
+		respCh: make(chan ResponseInfo, 16),
+		reqCh:  make(chan RequestInfo, 16),
 		errCh:  make(chan error),
 	}
 	p.setcap(16)
@@ -97,30 +97,43 @@ func (e *requestExecutor) run() {
 
 func execRequests(reqs []RequestInfo) ([]ResponseInfo, error) {
 	var wg sync.WaitGroup
+	resps := make([]ResponseInfo, len(reqs))
 
-	respCh := make(chan ResponseInfo)
-	resps := make([]ResponseInfo, 0, len(reqs))
-
-	//send requests in parallel
-	for _, req := range reqs {
+	for i, req := range reqs {
 		wg.Add(1)
-		go func(req RequestInfo) {
+		go func(i int, req RequestInfo) {
+			defer wg.Done()
 			resp, err := execRequest(req)
 			if err != nil {
 				log.Printf("*** ERROR *** Unable to execute request: %v\n", err)
 			}
-			respCh <- resp
-		}(req)
+			resps[i] = resp
+		}(i, req)
 	}
 
-	//wait for responses
-	go func() {
-		for i := 0; i < len(reqs); i += 1 {
-			resp := <-respCh
-			defer wg.Done()
-			resps = append(resps, resp)
-		}
-	}()
+	// respCh := make(chan ResponseInfo)
+	// resps := make([]ResponseInfo, 0, len(reqs))
+
+	// //send requests in parallel
+	// for _, req := range reqs {
+	// 	wg.Add(1)
+	// 	go func(req RequestInfo) {
+	// 		resp, err := execRequest(req)
+	// 		if err != nil {
+	// 			log.Printf("*** ERROR *** Unable to execute request: %v\n", err)
+	// 		}
+	// 		respCh <- resp
+	// 	}(req)
+	// }
+
+	// //wait for responses
+	// go func() {
+	// 	for i := 0; i < len(reqs); i += 1 {
+	// 		resp := <-respCh
+	// 		defer wg.Done()
+	// 		resps = append(resps, resp)
+	// 	}
+	// }()
 
 	wg.Wait()
 
