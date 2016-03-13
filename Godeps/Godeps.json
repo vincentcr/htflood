@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/vincentcr/htflood",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.6",
 	"Deps": [
 		{
 			"ImportPath": "github.com/imdario/mergo",
@@ -12,13 +12,9 @@
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
 		},
 		{
-			"ImportPath": "github.com/kr/pretty",
-			"Comment": "go.weekly.2011-12-22-27-ge6ac2fc",
-			"Rev": "e6ac2fc51e89a3249e82157fa0bb7a18ef9dd5bb"
-		},
-		{
-			"ImportPath": "github.com/kr/text",
-			"Rev": "e373e137fafd8abd480af49182dea0513914adb4"
+			"ImportPath": "github.com/pkg/profile",
+			"Comment": "v1.0.0",
+			"Rev": "c795610ec6e479e5795f7852db65ea15073674a6"
 		},
 		{
 			"ImportPath": "github.com/spf13/cobra",
