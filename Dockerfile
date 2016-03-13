@@ -1,4 +1,4 @@
-FROM golang:1.4
+FROM golang:1.6
 RUN go get github.com/tools/godep
 
 ENV API_KEY=212af9729e854cb3b4d2715978527575
